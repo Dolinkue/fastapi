@@ -1,6 +1,8 @@
 #Python
 from typing import List, Optional
-from enum import Enum #sirve para crear enumeraciones de string, para validar hair_color
+from enum import Enum
+from fastapi.datastructures import UploadFile
+from fastapi.param_functions import Header #sirve para crear enumeraciones de string, para validar hair_color
 
 #Pydantic
 from pydantic import BaseModel
@@ -8,7 +10,7 @@ from pydantic import Field, EmailStr  #esto es para validar los models (clases)
 
 #FastApi
 from fastapi import FastAPI
-from fastapi import Body, Query, Path
+from fastapi import Body, Query, Path, Form, Header, Cookie, UploadFile, File
 from fastapi import status
 
 # esta variable contiene a toda nuestra aplicacion, FastAPI es una instancia por los ()
@@ -65,7 +67,12 @@ class Person(PersonModel):
 #se crea esta clase para crear un modelo de devolucion sin el password
 class PersonOut(PersonModel):  
     pass
-    
+
+class LoginOut(BaseModel):
+    username: str = Field(..., min_length=1, max_length=20, example="nico2021") 
+    message: str = Field(default='Login successful')
+                        
+
 
 @app.get(
     path="/", 
@@ -149,4 +156,54 @@ def update_person(
     results.update(location.dict())#aca se usa para combiar los dos body ya que solo se hace de a uno. 
     return results
 
-    
+#form
+@app.post(
+    path="/login",
+    response_model = LoginOut,
+    status_code=status.HTTP_200_OK
+) 
+def login(username: str = Form(...), password: str = Form(...)):
+    return LoginOut(username=username)
+
+# cookies and header parameters
+
+@app.post(
+    path="/contact",
+    status_code=status.HTTP_200_OK
+)
+def contact(
+    first_name: str = Form(
+        ..., 
+        min_length=1, 
+        max_length=20
+        ),
+    last_name: str = Form(
+        ..., 
+        min_length=1, 
+        max_length=20
+        ),
+    email : EmailStr = Form(...), 
+    message : str = Form(
+        ...,
+        min_length=1,
+        max_length=50
+        ),
+    user_agent: Optional[str] = Header(default=None),
+    ads : Optional[str] = Cookie(default=None)           
+):
+    return user_agent
+
+# Files aca es para subir archivos como si fuera instagram para subir fotos, es post porqeu enviamos al servidor
+
+@app.post(
+    path="/post-image"
+) 
+def post_image(
+    image: UploadFile = File(...)
+):
+    return {
+        "Filename": image.filename,
+        "Format": image.content_type,
+        "Size(kb)": round(len(image.file.read())/1024, ndigits=2)
+    }    
+
