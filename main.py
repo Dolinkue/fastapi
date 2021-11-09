@@ -9,6 +9,7 @@ from pydantic import Field, EmailStr  #esto es para validar los models (clases)
 #FastApi
 from fastapi import FastAPI
 from fastapi import Body, Query, Path
+from fastapi import status
 
 # esta variable contiene a toda nuestra aplicacion, FastAPI es una instancia por los ()
 app = FastAPI() 
@@ -35,8 +36,8 @@ class Location(BaseModel):
             }
         }
 
-
-class Person(BaseModel):
+#aca se aplica la herencia para no repetir codigo, luego en Person y PersonOut tomamos de PersonModel
+class PersonModel (BaseModel):
     first_name: str = Field(..., min_length=1, max_length=50)
     last_name: str = Field(..., min_length=1, max_length=50)
     age: int = Field(..., gt=0, le=115)
@@ -44,19 +45,32 @@ class Person(BaseModel):
     hair_color: Optional[HairColor] = Field(default=None)
     is_married: Optional[bool] = Field(default=None)
 
-    class Config: 
-         schema_extra = {
-             "example": {
-                 "first_name": "nicolas",
-                 "last_name": "Dolinkue",
-                 "age": 38, 
-                 "email": "dolinkue_n@hotmail.com",
-                 "hair_color": "blonde",
-                "is_married": False
-             }
-         }
+class Person(PersonModel):
+    
+    password : str = Field(..., min_length=8)
 
-@app.get("/")  
+    #class Config: 
+     #    schema_extra = {
+      #       "example": {
+      #           "first_name": "nicolas",
+      #           "last_name": "Dolinkue",
+      #           "age": 38, 
+      #           "email": "dolinkue_n@hotmail.com",
+      #           "hair_color": "blonde",
+      #          "is_married": False
+                
+       #      }
+      #   } 
+
+#se crea esta clase para crear un modelo de devolucion sin el password
+class PersonOut(PersonModel):  
+    pass
+    
+
+@app.get(
+    path="/", 
+    status_code=status.HTTP_200_OK
+    )  
 def home():
      # para comunicarse se hace mediante Json y en py el Json es un dicci {}
     return {"hello": "world"}   
@@ -66,14 +80,22 @@ def home():
  # aca usamos post porque le pedimos al sevidor datos si enviamos seria get
  #dentro de create_person definimos persona con la Person y lo igualamos a body que se importa para poner los ... que dicen que es obligatiro el parametro
 
-@app.post("/person/new")
+# aca se agrega el response_model = PersonOut pq lo que hace es armar todo en base a Person pero devuelve lo que esta en PersonOut es decir sin el Password
+@app.post(
+    path="/person/new", 
+    response_model=PersonOut,
+    status_code=status.HTTP_201_CREATED
+    ) 
  
 def create_person(person: Person = Body(...)):
     return person
 
 #validaciones query parametro
 
-@app.get("/person/detail")
+@app.get(
+    path="/person/detail",
+    status_code=status.HTTP_200_OK
+    )
 def show_person(
      name: Optional[str] = Query(
         None, 
@@ -92,7 +114,10 @@ def show_person(
 
 # validation path parameter, van entre {} los query parameters van sin nada como arriba
 
-@app.get("/person/detail/{person_id}") 
+@app.get(
+    path="/person/detail/{person_id}",
+    status_code=status.HTTP_200_OK
+    ) 
 def show_person(
     person_id: int = Path(
         ..., 
@@ -106,7 +131,10 @@ def show_person(
 
 # validation requests Body
 #con put es para una actualizacion
-@app.put("/person/{person_id}")    
+@app.put(
+    path="/person/{person_id}",
+    status_code=status.HTTP_202_ACCEPTED
+    )    
 def update_person(
     person_id: int = Path(
         ...,
