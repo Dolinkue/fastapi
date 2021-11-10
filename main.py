@@ -12,6 +12,8 @@ from pydantic import Field, EmailStr  #esto es para validar los models (clases)
 from fastapi import FastAPI
 from fastapi import Body, Query, Path, Form, Header, Cookie, UploadFile, File
 from fastapi import status
+from fastapi import HTTPException
+
 
 # esta variable contiene a toda nuestra aplicacion, FastAPI es una instancia por los ()
 app = FastAPI() 
@@ -76,7 +78,8 @@ class LoginOut(BaseModel):
 
 @app.get(
     path="/", 
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["HOME"]
     )  
 def home():
      # para comunicarse se hace mediante Json y en py el Json es un dicci {}
@@ -91,17 +94,30 @@ def home():
 @app.post(
     path="/person/new", 
     response_model=PersonOut,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
+    tags=["persons"]
     ) 
  
 def create_person(person: Person = Body(...)):
+    """
+    Create Person
+
+    This path operation creates a person in the app and save the information in the database
+
+    Parameters: 
+    - Request body parameter: 
+        - **person: Person** -> A person model with first name, last name, age, hair color and marital stauts
+
+    Returns a person model with first name, last name, age, hair color and marital status
+    """
     return person
 
 #validaciones query parametro
 
 @app.get(
     path="/person/detail",
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["persons"]
     )
 def show_person(
      name: Optional[str] = Query(
@@ -109,7 +125,8 @@ def show_person(
         min_length=1, 
         max_length=50,
         title="Person name",
-        description="this is the person name. It's between 1 and 50 chart"
+        description="this is the person name. It's between 1 and 50 chart",
+        tags=["persons"]
         ),
     age: int = Query(
         ..., 
@@ -121,34 +138,46 @@ def show_person(
 
 # validation path parameter, van entre {} los query parameters van sin nada como arriba
 
+persons = [1, 2, 3, 4, 5]
+
 @app.get(
     path="/person/detail/{person_id}",
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["persons"]
     ) 
 def show_person(
     person_id: int = Path(
         ..., 
+        #gt es mayor a 0 greater than 0
         gt=0,
         title="It´s person ID",
-        description="Person ID required"
+        description="Person ID required",
+        tags=["persons"]
         )
+    ):    
+        if person_id not in persons: 
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="¡This person doesn't exist!"
+            )    
 
-    ):
-    return {person_id:"it exists"}
+        return {person_id:"it exists"}
 
 # validation requests Body
 #con put es para una actualizacion
 @app.put(
     path="/person/{person_id}",
-    status_code=status.HTTP_202_ACCEPTED
+    status_code=status.HTTP_202_ACCEPTED,
+    tags=["persons"]
     )    
 def update_person(
     person_id: int = Path(
         ...,
         title="Person ID",
         description="This is the person ID",
-        gt=0
+        gt=0        
     ),
+
     person: Person = Body(...),
     location: Location = Body(...)
 ): 
@@ -160,7 +189,8 @@ def update_person(
 @app.post(
     path="/login",
     response_model = LoginOut,
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["Login"]
 ) 
 def login(username: str = Form(...), password: str = Form(...)):
     return LoginOut(username=username)
@@ -169,7 +199,8 @@ def login(username: str = Form(...), password: str = Form(...)):
 
 @app.post(
     path="/contact",
-    status_code=status.HTTP_200_OK
+    status_code=status.HTTP_200_OK,
+    tags=["contact"]
 )
 def contact(
     first_name: str = Form(
@@ -196,7 +227,8 @@ def contact(
 # Files aca es para subir archivos como si fuera instagram para subir fotos, es post porqeu enviamos al servidor
 
 @app.post(
-    path="/post-image"
+    path="/post-image",
+    tags=["files"]
 ) 
 def post_image(
     image: UploadFile = File(...)
